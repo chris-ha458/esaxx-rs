@@ -136,7 +136,7 @@ pub fn suffix_rs(string: &str) -> Result<Suffix<usize>, SuffixError> {
 /// Creates the suffix array and provides an iterator over its items (c++ unsafe version)
 ///
 /// Gives you an iterator over the suffixes of the input array and their count within
-/// the input srtring.
+/// the input string.
 /// ```rust
 /// let string = "abracadabra";
 /// let suffix = esaxx_rs::suffix(string).unwrap();
