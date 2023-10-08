@@ -1,4 +1,5 @@
-use esaxx_rs::{suffix, suffix_rs};
+use esaxx_rs::c_ver::suffix;
+use esaxx_rs::suffix_rs;
 use std::env::args;
 use std::fs;
 
