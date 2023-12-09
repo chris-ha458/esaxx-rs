@@ -1,26 +1,6 @@
 use crate::types::{Bucket, SArray, StringT, SuffixError};
 use std::collections::HashMap;
-fn get_counts(t: &StringT, c: &mut Bucket) {
-    c.fill(0);
-    t.iter().for_each(|character| c[*character as usize] += 1);
-}
-
-fn get_buckets(c: &Bucket, b: &mut Bucket, end: bool) {
-    let mut sum = 0;
-    if end {
-        c.iter().zip(b.iter_mut()).for_each(|(&c_el, b_el)| {
-            sum += c_el;
-            *b_el = sum;
-        });
-    } else {
-        c.iter().zip(b.iter_mut()).for_each(|(&c_el, b_el)| {
-            *b_el = sum;
-            sum += c_el;
-        });
-    }
-}
-
-fn get_counts_and_buckets(t: &StringT, end: bool) -> (HashMap<usize, usize>, Vec<usize>) {
+fn get_counts_and_buckets(t: &StringT, end: bool) -> Vec<usize> {
     let k = 0x110000;
     let mut counts = HashMap::new();
     let mut buckets = vec![0; k];
@@ -43,12 +23,12 @@ fn get_counts_and_buckets(t: &StringT, end: bool) -> (HashMap<usize, usize>, Vec
         }
     }
 
-    (counts, buckets)
+    buckets
 }
 
 fn induce_sa(string: &StringT, suffix_array: &mut SArray, n: usize) {
     debug_assert!(n <= suffix_array.len());
-    let (_, mut buckets) = get_counts_and_buckets(string, false);
+    let mut buckets = get_counts_and_buckets(string, false);
 
     let mut c0;
     let mut j = n - 1;
@@ -83,7 +63,7 @@ fn induce_sa(string: &StringT, suffix_array: &mut SArray, n: usize) {
 
     // Compute SA
     // XXX: true here.
-    let (_, mut buckets) = get_counts_and_buckets(string, true);
+    let mut buckets = get_counts_and_buckets(string, true);
     c1 = 0;
     index = buckets[c1];
     for i in (0..n).rev() {
@@ -111,7 +91,7 @@ fn induce_sa(string: &StringT, suffix_array: &mut SArray, n: usize) {
 fn compute_bwt(string: &StringT, suffix_array: &mut SArray, n: usize) -> usize {
     // TODO
     let mut pidx = 0;
-    let (_, mut buckets) = get_counts_and_buckets(string, false);
+    let mut buckets = get_counts_and_buckets(string, false);
     let mut j = n - 1;
     let mut c1 = string[j] as usize;
     let mut c0;
@@ -147,9 +127,7 @@ fn compute_bwt(string: &StringT, suffix_array: &mut SArray, n: usize) -> usize {
     }
 
     // Compute SA
-    //get_counts(string, counts);
-    //get_buckets(counts, buckets, true);
-    let (_, mut buckets) = get_counts_and_buckets(string, true);
+    let mut buckets = get_counts_and_buckets(string, true);
     c1 = 0;
     index = buckets[c1];
     for i in (0..n).rev() {
@@ -194,7 +172,7 @@ fn suffixsort(
     //let mut buckets = vec![0; k];
     //get_counts(string, &mut counts);
     //get_buckets(&counts, &mut buckets, true);
-    let (_, mut buckets) = get_counts_and_buckets(string, true);
+    let mut buckets  = get_counts_and_buckets(string, true);
 
     // stage 1:
     // reduce the problem by at least 1/2
@@ -337,7 +315,7 @@ fn suffixsort(
     /* put all left-most S characters into their buckets */
     //get_counts(string, &mut counts);
     //get_buckets(&counts, &mut buckets, true);
-    let (_, mut buckets) = get_counts_and_buckets(string, true);
+    let mut buckets  = get_counts_and_buckets(string, true);
     for item in suffix_array.iter_mut().take(n).skip(m) {
         *item = 0;
     }
