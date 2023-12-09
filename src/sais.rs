@@ -1,13 +1,10 @@
 use crate::types::{Bucket, SArray, StringT, SuffixError};
 
-fn has_high_bit(j: usize) -> bool {
-    (0x0001usize & j.reverse_bits()) == 1
-}
-
 fn get_counts(t: &StringT, c: &mut Bucket) {
     c.fill(0);
     t.iter().for_each(|character| c[*character as usize] += 1);
 }
+
 fn get_buckets(c: &Bucket, b: &mut Bucket, end: bool) {
     let mut sum = 0;
     if end {
@@ -47,7 +44,7 @@ fn induce_sa(
     for i in 0..n {
         j = suffix_array[i];
         suffix_array[i] = !j;
-        if !has_high_bit(j) && j > 0 {
+        if j.leading_zeros() !=0 && j > 0 {
             j -= 1;
             c0 = string[j] as usize;
             if c0 != c1 {
@@ -55,7 +52,7 @@ fn induce_sa(
                 c1 = c0;
                 index = buckets[c1];
             }
-            suffix_array[index] = if j > 0 && !has_high_bit(j) && (string[j - 1] as usize) < c1 {
+            suffix_array[index] = if j > 0 && j.leading_zeros() !=0 && (string[j - 1] as usize) < c1 {
                 !j
             } else {
                 j
@@ -72,7 +69,7 @@ fn induce_sa(
     index = buckets[c1];
     for i in (0..n).rev() {
         j = suffix_array[i];
-        if j > 0 && !has_high_bit(j) {
+        if j > 0 && j.leading_zeros() !=0 {
             j -= 1;
             c0 = string[j] as usize;
             if c0 != c1 {
