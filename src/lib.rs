@@ -389,6 +389,45 @@ mod rs_tests {
         assert_eq!(iter.next(), Some((&chars[..0], 11))); // ''
         assert_eq!(iter.next(), None);
     }
+    #[test]
+    fn test_esaxx_rs_unicode() {
+        let string = "유니유니코드".to_string();
+        let chars: Vec<_> = string.chars().map(|c| c as u32).collect();
+        let n = chars.len();
+        let mut sa = vec![0; n];
+        let mut l = vec![0; n];
+        let mut r = vec![0; n];
+        let mut d = vec![0; n];
+        let alphabet_size = 0x110000; // All UCS4 range.
+
+        let node_num = esaxx_rs(&chars, &mut sa, &mut l, &mut r, &mut d, alphabet_size).unwrap();
+        println!("Node num {}", node_num);
+        println!("sa {:?}", sa);
+        println!("l {:?}", l);
+        println!("r {:?}", r);
+        println!("d {:?}", d);
+        assert_eq!(node_num, 3);
+        assert_eq!(sa, vec![1, 3, 5, 0, 2, 4]);
+        assert_eq!(l, vec![0, 3, 0, 0, 2, 0]);
+        assert_eq!(r, vec![2, 5, 6, 1, 0, 0]);
+        assert_eq!(d, vec![1, 2, 0, 0, 0, 0]);
+    }
+    #[test]
+    fn test_suffix_rs_unicode() {
+        let suffix = suffix_rs("유니유니코드").unwrap();
+        assert_eq!(suffix.node_num, 3);
+        assert_eq!(suffix.sa, vec![1, 3, 5, 0, 2, 4]);
+        assert_eq!(suffix.l, vec![0, 3, 0, 0, 2, 0]);
+        assert_eq!(suffix.r, vec![2, 5, 6, 1, 0, 0]);
+        assert_eq!(suffix.d, vec![1, 2, 0, 0, 0, 0]);
+
+        let mut iter = suffix.iter();
+        let chars: Vec<_> = "유니유니코드".chars().collect();
+        assert_eq!(iter.next(), Some((&chars[1..2], 2))); // 니
+        assert_eq!(iter.next(), Some((&chars[0..2], 2))); // 유니
+        assert_eq!(iter.next(), Some((&chars[..0], 6))); // ''
+        assert_eq!(iter.next(), None);
+    }
 
     #[test]
     fn test_out_of_bounds_bug() {
