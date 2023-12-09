@@ -1,5 +1,5 @@
 use crate::types::{Bucket, SArray, StringT, SuffixError};
-
+use std::collections::HashMap;
 fn get_counts(t: &StringT, c: &mut Bucket) {
     c.fill(0);
     t.iter().for_each(|character| c[*character as usize] += 1);
@@ -20,16 +20,35 @@ fn get_buckets(c: &Bucket, b: &mut Bucket, end: bool) {
     }
 }
 
-fn induce_sa(
-    string: &StringT,
-    suffix_array: &mut SArray,
-    counts: &mut Bucket,
-    buckets: &mut Bucket,
-    n: usize,
-) {
+fn get_counts_and_buckets(t: &StringT, end: bool) -> (HashMap<usize, usize>, Vec<usize>) {
+    let k = 0x110000;
+    let mut counts = HashMap::new();
+    let mut buckets = vec![0; k];
+    let mut sum = 0;
+
+    // Count characters
+    t.iter()
+        .for_each(|&character| *counts.entry(character as usize).or_insert(0) += 1);
+
+    // Create buckets
+    if end {
+        for i in 0..k {
+            sum += *counts.get(&i).unwrap_or(&0);
+            buckets[i] = sum;
+        }
+    } else {
+        for i in 0..k {
+            buckets[i] = sum;
+            sum += *counts.get(&i).unwrap_or(&0);
+        }
+    }
+
+    (counts, buckets)
+}
+
+fn induce_sa(string: &StringT, suffix_array: &mut SArray, n: usize) {
     debug_assert!(n <= suffix_array.len());
-    get_counts(string, counts);
-    get_buckets(counts, buckets, false);
+    let (_, mut buckets) = get_counts_and_buckets(string, false);
 
     let mut c0;
     let mut j = n - 1;
@@ -44,7 +63,7 @@ fn induce_sa(
     for i in 0..n {
         j = suffix_array[i];
         suffix_array[i] = !j;
-        if j.leading_zeros() !=0 && j > 0 {
+        if j.leading_zeros() != 0 && j > 0 {
             j -= 1;
             c0 = string[j] as usize;
             if c0 != c1 {
@@ -52,24 +71,24 @@ fn induce_sa(
                 c1 = c0;
                 index = buckets[c1];
             }
-            suffix_array[index] = if j > 0 && j.leading_zeros() !=0 && (string[j - 1] as usize) < c1 {
-                !j
-            } else {
-                j
-            };
+            suffix_array[index] =
+                if j > 0 && j.leading_zeros() != 0 && (string[j - 1] as usize) < c1 {
+                    !j
+                } else {
+                    j
+                };
             index += 1;
         }
     }
 
     // Compute SA
     // XXX: true here.
-    get_counts(string, counts);
-    get_buckets(counts, buckets, true);
+    let (_, mut buckets) = get_counts_and_buckets(string, true);
     c1 = 0;
     index = buckets[c1];
     for i in (0..n).rev() {
         j = suffix_array[i];
-        if j > 0 && j.leading_zeros() !=0 {
+        if j > 0 && j.leading_zeros() != 0 {
             j -= 1;
             c0 = string[j] as usize;
             if c0 != c1 {
@@ -89,17 +108,10 @@ fn induce_sa(
     }
 }
 
-fn compute_bwt(
-    string: &StringT,
-    suffix_array: &mut SArray,
-    counts: &mut Bucket,
-    buckets: &mut Bucket,
-    n: usize,
-) -> usize {
+fn compute_bwt(string: &StringT, suffix_array: &mut SArray, n: usize) -> usize {
     // TODO
     let mut pidx = 0;
-    get_counts(string, counts);
-    get_buckets(counts, buckets, false);
+    let (_, mut buckets) = get_counts_and_buckets(string, false);
     let mut j = n - 1;
     let mut c1 = string[j] as usize;
     let mut c0;
@@ -135,8 +147,9 @@ fn compute_bwt(
     }
 
     // Compute SA
-    get_counts(string, counts);
-    get_buckets(counts, buckets, true);
+    //get_counts(string, counts);
+    //get_buckets(counts, buckets, true);
+    let (_, mut buckets) = get_counts_and_buckets(string, true);
     c1 = 0;
     index = buckets[c1];
     for i in (0..n).rev() {
@@ -177,10 +190,12 @@ fn suffixsort(
     let mut pidx = 0;
     let mut c0;
 
-    let mut counts = vec![0; k];
-    let mut buckets = vec![0; k];
-    get_counts(string, &mut counts);
-    get_buckets(&counts, &mut buckets, true);
+    //let mut counts = vec![0; k];
+    //let mut buckets = vec![0; k];
+    //get_counts(string, &mut counts);
+    //get_buckets(&counts, &mut buckets, true);
+    let (_, mut buckets) = get_counts_and_buckets(string, true);
+
     // stage 1:
     // reduce the problem by at least 1/2
     // sort all the S-substrings
@@ -198,7 +213,7 @@ fn suffixsort(
         }
         c1 = c0;
     }
-    induce_sa(string, suffix_array, &mut counts, &mut buckets, n);
+    induce_sa(string, suffix_array, n);
 
     // compact all the sorted substrings into the first m items of SA
     // 2*m must be not larger than n (proveable)
@@ -320,8 +335,9 @@ fn suffixsort(
 
     /* stage 3: induce the result for the original problem */
     /* put all left-most S characters into their buckets */
-    get_counts(string, &mut counts);
-    get_buckets(&counts, &mut buckets, true);
+    //get_counts(string, &mut counts);
+    //get_buckets(&counts, &mut buckets, true);
+    let (_, mut buckets) = get_counts_and_buckets(string, true);
     for item in suffix_array.iter_mut().take(n).skip(m) {
         *item = 0;
     }
@@ -334,9 +350,9 @@ fn suffixsort(
         }
     }
     if is_bwt {
-        pidx = compute_bwt(string, suffix_array, &mut counts, &mut buckets, n);
+        pidx = compute_bwt(string, suffix_array, n);
     } else {
-        induce_sa(string, suffix_array, &mut counts, &mut buckets, n);
+        induce_sa(string, suffix_array, n);
     }
 
     Ok(pidx)
@@ -388,15 +404,13 @@ mod tests {
     #[test]
     fn test_induce_sa() {
         let chars: Vec<_> = "abracadabra".chars().map(|c| c as u32).collect();
-        let mut c = vec![0; 256];
-        let mut b = vec![0; 256];
 
         let mut sa = vec![0, 0, 3, 5, 7, 0, 0, 0, 0, 0, 0];
-        induce_sa(&chars, &mut sa, &mut b, &mut c, chars.len());
+        induce_sa(&chars, &mut sa, chars.len());
         assert_eq!(sa, vec![10, 7, 0, 3, 5, 8, 1, 4, 6, 9, 2]);
 
         let mut sa = vec![0, 0, 7, 3, 5, 0, 0, 0, 0, 0, 0];
-        induce_sa(&chars, &mut sa, &mut b, &mut c, chars.len());
+        induce_sa(&chars, &mut sa, chars.len());
         assert_eq!(sa, vec![10, 7, 0, 3, 5, 8, 1, 4, 6, 9, 2]);
     }
 
@@ -404,8 +418,6 @@ mod tests {
     fn test_induce_sa_long() {
         let string = "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.".to_string();
         let chars: Vec<_> = string.chars().map(|c| c as u32).collect();
-        let mut c = vec![0; 256];
-        let mut b = vec![0; 256];
         let mut sa = vec![
             5, 11, 14, 21, 27, 32, 35, 39, 48, 52, 64, 74, 80, 86, 90, 95, 99, 110, 119, 125, 130,
             135, 141, 145, 152, 157, 160, 168, 176, 181, 183, 190, 193, 198, 202, 212, 215, 218,
@@ -433,7 +445,7 @@ mod tests {
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         ];
         assert_eq!(sa.len(), chars.len());
-        induce_sa(&chars, &mut sa, &mut b, &mut c, chars.len());
+        induce_sa(&chars, &mut sa, chars.len());
         assert_eq!(
             sa,
             vec![
